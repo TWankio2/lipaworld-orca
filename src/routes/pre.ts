@@ -174,7 +174,13 @@ const userTransactionCache: Map<string, any[]> = new Map();
  *       500:
  *         description: Internal server error
  */
+
+
 router.post('/transaction/check', async (req: Request, res: Response) => {
+
+  console.log('🧪 Testing Orca connection before transaction check...');
+await orcaService.testConnection();
+
   try {
     const transactionData: OrcaTransaction = req.body;
     

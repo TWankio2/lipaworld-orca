@@ -5,7 +5,7 @@ import helmet from 'helmet';
 // import rateLimit from 'express-rate-limit'; // Temporarily commented out
 import { config } from './config/config';
 // import { errorHandler } from './middleware/errorHandler'; // Temporarily commented out
-// import { authMiddleware } from './middleware/auth'; // Temporarily commented out
+ import { authMiddleware } from './middleware/auth'; 
 import { logger } from './utils/logger';
 import { setupSwagger } from './swagger';
 
@@ -23,6 +23,7 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+//app.use('/oapi', authMiddleware);
 
 setupSwagger(app);
 

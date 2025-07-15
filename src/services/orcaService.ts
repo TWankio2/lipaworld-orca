@@ -9,7 +9,7 @@ class OrcaService {
   
   constructor() {
 
-    // Add this temporary logging
+    //  temporary logging
   console.log('🔑 Orca API URL:', config.orcaApiUrl);
   console.log('🔑 Orca API Key (first 10 chars):', config.orcaApiKey.substring(0, 10) + '...');
   console.log('🔑 API Key length:', config.orcaApiKey.length);
@@ -21,6 +21,7 @@ class OrcaService {
       headers: {
         'Authorization': `Bearer ${config.orcaApiKey}`,
         'Content-Type': 'application/json',
+        'X-Account-ID': 'LPg4NhlCQTZN5HGgu03',
       },
     });
     
@@ -61,6 +62,34 @@ class OrcaService {
       }
     );
   }
+
+
+
+async testConnection(): Promise<boolean> {
+  try {
+    console.log('🧪 Testing Orca connection...');
+    
+    
+    const response = await this.client.get('/health');
+    console.log('✅ Orca health check passed');
+    return true;
+  } catch (error: any) {
+    console.log('❌ Orca health check failed:', error.message);
+    
+  
+    try {
+      const response = await this.client.post('/v1/user', {
+        userId: 'test_connection_' + Date.now(),
+        registrationTimestamp: Date.now()
+      });
+      console.log('✅ Orca user test passed');
+      return true;
+    } catch (error2: any) {
+      console.log('❌ Orca user test failed:', error2.response?.status, error2.response?.data);
+      return false;
+    }
+  }
+}
   
   async onboardUser(userData: OrcaUser): Promise<OrcaRiskResponse> {
     try {
@@ -81,6 +110,7 @@ return {
       throw new Error(`Orca API Error: ${error.message}`);
     }
   }
+
   
   async checkTransaction(transactionData: OrcaTransaction): Promise<OrcaRiskResponse> {
     try {
