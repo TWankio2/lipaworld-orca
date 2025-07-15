@@ -58,14 +58,14 @@ class OrcaService {
   async onboardUser(userData: OrcaUser): Promise<OrcaRiskResponse> {
     try {
       const response: AxiosResponse = await this.client.post('/v1/user', userData);
-      return {
-        status: 'SUCCESS',
-        riskScore: response.data.riskScore || 0,
-        riskLevel: response.data.riskLevel || 'LOW',
-        action: this.determineAction(response.data.riskScore || 0),
-        orcaUserId: response.data.userId,
-        timestamp: Date.now()
-      };
+   
+return {
+  status: 'SUCCESS',
+  riskScore: response.data.riskScore || 0,
+  riskLevel: response.data.riskLevel || 'LOW',
+  action: this.determineAction(response.data.riskScore || 0),
+  timestamp: Date.now()
+};
     } catch (error: any) {
       logger.error('Failed to onboard user to Orca', { 
         userId: userData.userId,
