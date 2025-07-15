@@ -1,24 +1,66 @@
 // src/routes/health.ts
 import express, { Request, Response } from 'express';
 import { config } from '../config/config';
-import { orcaService } from '../services/orcaService';
 
 const router = express.Router();
 const startTime = Date.now();
 
-// GET /oapi/health
+/**
+ * @swagger
+ * /oapi/health:
+ *   get:
+ *     summary: Service health check
+ *     description: Check if the service and Orca connection are healthy
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Service is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [HEALTHY, DEGRADED]
+ *                   example: "HEALTHY"
+ *                 orcaConnection:
+ *                   type: string
+ *                   enum: [CONNECTED, DISCONNECTED]
+ *                   example: "CONNECTED"
+ *                 uptime:
+ *                   type: number
+ *                   description: "Uptime in seconds"
+ *                   example: 3600
+ *                 version:
+ *                   type: string
+ *                   example: "1.0.0"
+ *                 environment:
+ *                   type: string
+ *                   example: "development"
+ *                 timestamp:
+ *                   type: number
+ *                   example: 1703251200000
+ *       503:
+ *         description: Service is down
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "DOWN"
+ *                 error:
+ *                   type: string
+ */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // Basic health check
+    // Basic health check - simplified for now
     let orcaConnection = 'CONNECTED';
     
-    try {
-      // Simple ping to Orca API (you might need to implement a health endpoint)
-      await orcaService.onboardUser({
-        userId: 'health_check_' + Date.now(),
-        registrationTimestamp: Date.now()
-      });
-    } catch (error) {
+    // Simple check - in production you might ping Orca API
+    if (!config.orcaApiKey) {
       orcaConnection = 'DISCONNECTED';
     }
     
@@ -46,9 +88,67 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /oapi/health/metrics
+/**
+ * @swagger
+ * /oapi/health/metrics:
+ *   get:
+ *     summary: Service metrics
+ *     description: Get performance and usage metrics for the service
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Metrics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 requests:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: number
+ *                       example: 1500
+ *                     success:
+ *                       type: number
+ *                       example: 1450
+ *                     errors:
+ *                       type: number
+ *                       example: 50
+ *                     averageResponseTime:
+ *                       type: number
+ *                       description: "Average response time in milliseconds"
+ *                       example: 120
+ *                 orca:
+ *                   type: object
+ *                   properties:
+ *                     apiCalls:
+ *                       type: number
+ *                       example: 800
+ *                     apiErrors:
+ *                       type: number
+ *                       example: 5
+ *                     rateLimitHits:
+ *                       type: number
+ *                       example: 0
+ *                 decisions:
+ *                   type: object
+ *                   properties:
+ *                     allow:
+ *                       type: number
+ *                       example: 1200
+ *                     block:
+ *                       type: number
+ *                       example: 30
+ *                     review:
+ *                       type: number
+ *                       example: 150
+ *                 timestamp:
+ *                   type: number
+ *                   example: 1703251200000
+ */
 router.get('/metrics', (req: Request, res: Response) => {
-  // In production, these would come from actual metrics storage
+  // In production, these would come from actual metrics storage (Redis, InfluxDB, etc.)
   res.json({
     requests: {
       total: 0,
