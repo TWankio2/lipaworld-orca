@@ -7,7 +7,7 @@ import { config } from './config/config';
 // import { errorHandler } from './middleware/errorHandler'; // Temporarily commented out
 // import { authMiddleware } from './middleware/auth'; // Temporarily commented out
 import { logger } from './utils/logger';
-// import { setupSwagger } from './swagger'; // Temporarily commented out
+import { setupSwagger } from './swagger';
 
 const app = express();
 const PORT = config.port;
@@ -23,6 +23,8 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+setupSwagger(app);
 
 // Simple logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -112,6 +114,7 @@ app.get('/', (req: Request, res: Response) => {
     service: 'Lipaworld Orca Fraud Integration',
     version: '1.0.0',
     status: 'running',
+    documentation: '/api-docs',  
     timestamp: Date.now()
   });
 });
@@ -127,12 +130,12 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 // 404 handler
-app.use('*', (req: Request, res: Response) => {
+app.use((req: Request, res: Response) => {
   res.status(404).json({
     status: 'ERROR',
     error: {
       code: 'NOT_FOUND',
-      message: `Route ${req.originalUrl} not found`
+      message: 'Route not found'
     },
     timestamp: Date.now()
   });

@@ -8,6 +8,13 @@ class OrcaService {
   private client: AxiosInstance;
   
   constructor() {
+
+    // Add this temporary logging
+  console.log('🔑 Orca API URL:', config.orcaApiUrl);
+  console.log('🔑 Orca API Key (first 10 chars):', config.orcaApiKey.substring(0, 10) + '...');
+  console.log('🔑 API Key length:', config.orcaApiKey.length);
+
+
     this.client = axios.create({
       baseURL: config.orcaApiUrl,
       timeout: config.orcaTimeout,
