@@ -65,22 +65,27 @@ class OrcaService {
 
 
 
+// Fix the testConnection method in orcaService.ts
 async testConnection(): Promise<boolean> {
   try {
     console.log('🧪 Testing Orca connection...');
     
-    
+    // Try health check first
     const response = await this.client.get('/health');
     console.log('✅ Orca health check passed');
     return true;
   } catch (error: any) {
     console.log('❌ Orca health check failed:', error.message);
     
-  
+    // Try user creation as fallback - FIX THE PAYLOAD STRUCTURE
     try {
+      const testUserId = 'test_connection_' + Date.now();
       const response = await this.client.post('/v1/user', {
-        userId: 'test_connection_' + Date.now(),
-        registrationTimestamp: Date.now()
+        userId: testUserId,  // Orca expects 'userId' not 'id'
+        registrationTimestamp: Date.now(),
+        // Add other required fields if needed
+        email: `${testUserId}@test.com`,  // Might be required
+        // Add any other fields Orca expects
       });
       console.log('✅ Orca user test passed');
       return true;
@@ -112,42 +117,78 @@ return {
   }
 
   
-  async checkTransaction(transactionData: OrcaTransaction): Promise<OrcaRiskResponse> {
-    try {
-      const orcaPayload = this.mapToOrcaTransaction(transactionData);
-      const response: AxiosResponse = await this.client.post('/v1/transaction', orcaPayload);
-      
-      const riskScore = response.data.riskScore || 0;
-      const action = this.determineAction(riskScore);
-      
-      return {
-        status: 'SUCCESS',
-        riskScore,
-        riskLevel: this.determineRiskLevel(riskScore),
-        action,
-        reasons: response.data.reasons || [],
-        recommendedActions: response.data.recommendedActions || [],
-        checkId: response.data.checkId || `check_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: Date.now()
-      };
-    } catch (error: any) {
-      logger.error('Failed to check transaction with Orca', { 
-        transactionId: transactionData.transactionId,
-        error: error.message 
-      });
-      
-      // Return a safe default on Orca failure
-      return {
-        status: 'ERROR',
-        riskScore: 0,
-        riskLevel: 'LOW',
-        action: 'ALLOW',
-        reasons: ['Orca service unavailable - defaulting to allow'],
-        checkId: `fallback_${Date.now()}`,
-        timestamp: Date.now()
-      };
+  // Update the checkTransaction method in orcaService.ts
+async checkTransaction(transactionData: OrcaTransaction): Promise<OrcaRiskResponse> {
+  try {
+    const orcaPayload = this.mapToOrcaTransaction(transactionData);
+    const response: AxiosResponse = await this.client.post('/v1/transaction', orcaPayload);
+    
+    console.log('🔍 Orca response data:', JSON.stringify(response.data, null, 2));
+    
+    // Map Orca's actual response format to our expected format
+    const orcaData = response.data;
+    
+    // Orca returns: { id, recommendedAction, riskLevel, timestamp, triggered }
+    // We need to map this to our format
+    
+    let riskScore = 0;
+    let action: 'ALLOW' | 'REVIEW' | 'BLOCK' = 'ALLOW';
+    
+    // Map recommendedAction to our action format
+    switch (orcaData.recommendedAction) {
+      case 'ALLOW':
+        action = 'ALLOW';
+        riskScore = 10;
+        break;
+      case 'REVIEW':
+        action = 'REVIEW';
+        riskScore = 60;
+        break;
+      case 'BLOCK':
+        action = 'BLOCK';
+        riskScore = 95;
+        break;
+      default:
+        action = 'ALLOW';
+        riskScore = 0;
     }
+    
+    // Handle triggered rules
+    const reasons = orcaData.triggered ? orcaData.triggered.map((rule: any) => 
+      typeof rule === 'string' ? rule : rule.description || rule.name || 'Risk rule triggered'
+    ) : [];
+    
+    return {
+      status: 'SUCCESS',
+      riskScore,
+      riskLevel: this.determineRiskLevel(riskScore),
+      action,
+      reasons,
+      recommendedActions: [], // Orca doesn't seem to return this
+      checkId: orcaData.id || `check_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: orcaData.timestamp || Date.now()
+    };
+  } catch (error: any) {
+    console.error('❌ Orca transaction check failed:', error.response?.data || error.message);
+    
+    logger.error('Failed to check transaction with Orca', { 
+      transactionId: transactionData.transactionId,
+      error: error.message,
+      responseData: error.response?.data
+    });
+    
+    // Return a safe default on Orca failure
+    return {
+      status: 'ERROR',
+      riskScore: 0,
+      riskLevel: 'LOW',
+      action: 'ALLOW',
+      reasons: ['Orca service error - defaulting to allow'],
+      checkId: `fallback_${Date.now()}`,
+      timestamp: Date.now()
+    };
   }
+}
   
   async reportTransaction(reportData: any): Promise<{ status: string; reportId: string }> {
     try {
@@ -168,6 +209,68 @@ return {
       throw new Error(`Orca reporting failed: ${error.message}`);
     }
   }
+
+  // Add this method to your orcaService.ts
+async getRules(params: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  rules: any[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  try {
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    
+    if (params.status) {
+      queryParams.append('status', params.status);
+    }
+    if (params.page) {
+      queryParams.append('page', params.page.toString());
+    }
+    if (params.limit) {
+      queryParams.append('limit', params.limit.toString());
+    }
+    
+    const url = `/v1/rules${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    
+    console.log('🔍 Getting rules from Orca:', url);
+    
+    const response: AxiosResponse = await this.client.get(url);
+    
+    console.log('🔍 Rules response:', JSON.stringify(response.data, null, 2));
+    
+    // Map Orca's response format to our expected format
+    const orcaData = response.data;
+    
+    return {
+      rules: orcaData.rules || [],
+      total: orcaData.total || 0,
+      page: params.page || 1,
+      limit: params.limit || 20
+    };
+    
+  } catch (error: any) {
+    console.error('❌ Failed to get rules:', error.response?.data || error.message);
+    
+    logger.error('Failed to get rules from Orca', {
+      error: error.message,
+      responseData: error.response?.data,
+      params
+    });
+    
+    // Return empty rules on error
+    return {
+      rules: [],
+      total: 0,
+      page: params.page || 1,
+      limit: params.limit || 20
+    };
+  }
+}
   
   private mapToOrcaTransaction(data: OrcaTransaction): any {
     // Map our internal transaction format to Orca's expected format

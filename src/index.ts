@@ -53,6 +53,32 @@ try {
   });
 }
 
+// Test rules routes
+try {
+  const rulesRoutes = require('./routes/rules').default;
+  if (typeof rulesRoutes === 'function') {
+    app.use('/oapi/rules', rulesRoutes);
+    console.log('✅ Rules routes loaded');
+  } else {
+    console.log('❌ Rules routes not a function');
+  }
+} catch (error: any) {
+  console.log('❌ Rules routes failed:', error.message);
+  // Fallback rules route
+  app.get('/oapi/rules', (req, res) => {
+    res.json({ 
+      status: 'SUCCESS', 
+      data: { 
+        rules: [], 
+        total: 0, 
+        page: 1, 
+        limit: 20 
+      },
+      message: 'Rules endpoint - fallback' 
+    });
+  });
+}
+
 // Test user routes
 try {
   const userRoutes = require('./routes/users').default;
