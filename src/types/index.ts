@@ -8,6 +8,7 @@ export interface OrcaUser {
     kycStatus?: 'PENDING' | 'COMPLETED' | 'FAILED';
     accountType?: 'INDIVIDUAL' | 'BUSINESS';
     referralSource?: string;
+    sourceOfIncome?: string;
   };
 }
 

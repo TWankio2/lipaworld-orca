@@ -66,32 +66,70 @@ class OrcaService {
 
 
 // Fix the testConnection method in orcaService.ts
+// Full testConnection method for orcaService.ts
 async testConnection(): Promise<boolean> {
   try {
     console.log('🧪 Testing Orca connection...');
     
-    // Try health check first
-    const response = await this.client.get('/health');
-    console.log('✅ Orca health check passed');
-    return true;
-  } catch (error: any) {
-    console.log('❌ Orca health check failed:', error.message);
+    // Try a simple transaction test first
+    const testTransactionId = 'test_connection_' + Date.now();
+    const testTransaction = {
+      id: testTransactionId,
+      userId: 'test_user_connection',
+      status: 'PENDING',
+      amount: 1,
+      currencyCode: 'KES',
+      timestamp: Date.now(),
+      paymentMethod: 'bank',
+      actionType: 'PURCHASE'
+    };
     
-    // Try user creation as fallback - FIX THE PAYLOAD STRUCTURE
+    console.log('🔍 Testing transaction endpoint:', JSON.stringify(testTransaction, null, 2));
+    
+    const response = await this.client.post('/v1/transaction', testTransaction);
+    console.log('✅ Orca transaction test passed:', response.data);
+    return true;
+    
+  } catch (error: any) {
+    console.log('❌ Orca transaction test failed:', error.response?.status, error.response?.data);
+    
+    // Try user creation as fallback
     try {
-      const testUserId = 'test_connection_' + Date.now();
-      const response = await this.client.post('/v1/user', {
-        userId: testUserId,  // Orca expects 'userId' not 'id'
-        registrationTimestamp: Date.now(),
-        // Add other required fields if needed
-        email: `${testUserId}@test.com`,  // Might be required
-        // Add any other fields Orca expects
-      });
-      console.log('✅ Orca user test passed');
+      console.log('🔄 Trying user creation test...');
+      
+      const testUserId = 'test_user_' + Date.now();
+      const testUser = {
+        id: testUserId,  // Use 'id' not 'userId' - this was the key fix
+        createdAt: Date.now(),
+        email: {
+          email: `${testUserId}@test.com`,
+          isVerified: false
+        },
+        status: 'PENDING'
+      };
+      
+      console.log('🔍 Testing user endpoint:', JSON.stringify(testUser, null, 2));
+      
+      const response = await this.client.post('/v1/user', testUser);
+      console.log('✅ Orca user test passed:', response.data);
       return true;
+      
     } catch (error2: any) {
       console.log('❌ Orca user test failed:', error2.response?.status, error2.response?.data);
-      return false;
+      
+      // Try rules endpoint as final fallback
+      try {
+        console.log('🔄 Trying rules endpoint test...');
+        
+        const response = await this.client.get('/v1/rules?limit=1');
+        console.log('✅ Orca rules test passed:', response.data);
+        return true;
+        
+      } catch (error3: any) {
+        console.log('❌ Orca rules test failed:', error3.response?.status, error3.response?.data);
+        console.log('❌ All Orca connection tests failed');
+        return false;
+      }
     }
   }
 }
@@ -272,21 +310,22 @@ async getRules(params: {
   }
 }
   
-  private mapToOrcaTransaction(data: OrcaTransaction): any {
-    // Map our internal transaction format to Orca's expected format
-    return {
-      id: data.transactionId,
-      userId: data.userId,
-      amount: data.amount,
-      currencyCode: data.currencyCode,
-      timestamp: Date.now(),
-      direction: data.direction,
-      actionType: data.actionType,
-      provider: data.provider,
-      paymentMethod: data.paymentMethod,
-      metadata: data.metadata
-    };
-  }
+private mapToOrcaTransaction(data: OrcaTransaction): any {
+  // Map our internal transaction format to Orca's expected format
+  return {
+    id: data.transactionId,
+    userId: data.userId,
+    status: 'PENDING', 
+    amount: data.amount,
+    currencyCode: data.currencyCode,
+    timestamp: Date.now(),
+    direction: data.direction,
+    actionType: data.actionType,
+    provider: data.provider,
+    paymentMethod: data.paymentMethod,
+    metadata: data.metadata
+  };
+}
   
   private determineAction(riskScore: number): 'ALLOW' | 'REVIEW' | 'BLOCK' {
     if (riskScore >= config.riskThresholds.blockThreshold) {

@@ -9,7 +9,8 @@ export const config = {
   
   // Orca API Configuration
   orcaApiUrl: process.env.ORCA_API_URL || 'https://sandbox.api-orca.com',
-  orcaApiKey: process.env.ORCA_API_KEY || '',
+  orcaApiKey: process.env.ORCA_API_KEY?.trim() || '',
+  orcaAccountId: process.env.ORCA_ACCOUNT_ID?.trim() || '',
   orcaTimeout: parseInt(process.env.ORCA_TIMEOUT || '3000'),
   
   // Service Authentication
